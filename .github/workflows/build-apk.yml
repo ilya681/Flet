@@ -1,0 +1,59 @@
+# نام workflow که در گیت‌هاب نمایش داده میشه
+name: Build Flet Android APK
+
+# مشخص میکنه چه زمانی این workflow اجرا بشه
+on:
+  # وقتی کد جدید به شاخه‌های main یا master ارسال بشه
+  push:
+    branches: [ main, master ]
+  # وقتی درخواست Pull Request برای این شاخه‌ها ایجاد بشه
+  pull_request:
+    branches: [ main, master ]
+  # اجازه میده که به‌صورت دستی از دکمه "Run workflow" در گیت‌هاب اجراش کنید
+  workflow_dispatch:
+
+# متغیرهای محیطی که در تمام مراحل قابل استفاده هستند
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  build-android-apk:
+    # این Job روی یک سرور مجازی لینوکس اجرا میشه
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      # 1. کدهای پروژه رو از مخزن دانلود (Checkout) میکنه
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. پایتون رو با نسخه مشخص شده نصب میکنه
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      # 3. وابستگی‌های پروژه رو از فایل requirements.txt نصب میکنه
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f "requirements.txt" ]; then pip install -r requirements.txt; else pip install flet; fi
+
+      # 4. جاوا رو نصب میکنه (پیش‌نیاز ساخت اندروید)
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      # 5. دستور ساخت APK رو اجرا میکنه
+      - name: Build APK with Flet
+        run: |
+          flet build apk --verbose
+
+      # 6. فایل APK ساخته شده رو به عنوان خروجی (Artifact) ذخیره میکنه
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: my-flet-app-apk
+          path: build/apk
