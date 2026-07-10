@@ -1,46 +1,51 @@
-name: Build Flet Android APK
+name: Build and Secure Flet APK
 
 on:
   push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
-  workflow_dispatch:
-
-env:
-  PYTHON_VERSION: '3.11'
+    branches: [ main ]
 
 jobs:
-  build-android-apk:
+  build:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: '3.11'
 
-      - name: Install Flet and Dependencies
+      # ۱. نصب پیش‌نیازها
+      - name: Install Dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install flet
-          if [ -f "requirements.txt" ]; then pip install -r requirements.txt; fi
+          pip install flet flet-build bandit
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      - name: Setup Java JDK
+      # ۲. اسکن امنیتی (برای اطمینان از امنیت کدهات)
+      - name: Security Scan with Bandit
+        run: |
+          echo "Running Security Scan..."
+          bandit -r . -ll
+
+      # ۳. آماده‌سازی محیط اندروید
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Build APK
-        run: flet build apk --verbose
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.x'
 
+      # ۴. بیلد گرفتن (چون main.py در ریشه است، آدرس مستقیم نمی‌خواد)
+      - name: Build APK
+        run: flet build apk --project "MyIliyaApp"
+
+      # ۵. آپلود خروجی
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: my-flet-app-apk
-          path: build/apk
+          name: app-release
+          path: build/apk/app-release.apk
