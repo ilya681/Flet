@@ -48,7 +48,7 @@ jobs:
       # ۶. مرحله اصلی بیلد APK
       # چون main.py در ریشه است، دستور زیر دقیق‌ترین حالت ممکن است
       - name: Build APK
-        run: flet build apk --project "MyIliyaApp"
+        run: flet build apk
 
       # ۷. ذخیره فایل نهایی برای دانلود
       - name: Upload APK Artifact
