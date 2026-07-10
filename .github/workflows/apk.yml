@@ -1,4 +1,4 @@
-name: Build and Secure Flet APK
+name: Build Flet APK
 
 on:
   push:
@@ -8,42 +8,51 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
+      # ۱. تنظیم نسخه پایتون (استفاده از نسخه پایدار ۳.۱۱)
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      # به‌روزرسانی pip برای جلوگیری از مشکلات نصب
-      - name: Upgrade pip and Install Dependencies
+      # ۲. به‌روزرسانی pip و نصب وابستگی‌ها (بدون پکیج اشتباه flet-build)
+      - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install flet flet-build bandit
+          pip install flet bandit
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      # اسکن امنیتی (اگر فایل پایتون تو خیلی ساده است، ممکنه اینجا خطا نده)
+      # ۳. اسکن امنیتی با Bandit (برای اینکه هم یاد بگیری و هم کدت امن باشه)
       - name: Security Scan with Bandit
-        run: bandit -r . -ll || echo "Bandit scan finished with findings"
+        run: |
+          echo "Running Security Scan..."
+          # استفاده از || true باعث میشه اگر باگ امنیتی پیدا کرد، کل بیلد متوقف نشه و فقط گزارش بده
+          bandit -r . -ll || echo "Bandit found some issues, but continuing build..."
 
-      - name: Setup Java 17
+      # ۴. تنظیم محیط جاوا (الزامی برای بیلد اندروید)
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
+      # ۵. تنظیم محیط Flutter (قلب تپنده بیلد Flet)
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.x'
           channel: 'stable'
 
-      # مرحله بیلد: اضافه کردن --no-pub برای جلوگیری از دانلودهای اضافه و خطا
+      # ۶. مرحله اصلی بیلد APK
+      # چون main.py در ریشه است، دستور زیر دقیق‌ترین حالت ممکن است
       - name: Build APK
         run: flet build apk --project "MyIliyaApp"
 
-      - name: Upload APK
+      # ۷. ذخیره فایل نهایی برای دانلود
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-release
-          path: build/apk/app-release.apk
+          name: MyIliyaApp-Release
+          path: build/apk/*.apk
